@@ -38,9 +38,11 @@ npm start
 
 ---
 
-### 3. Vercel Deployment Instructions
+### 3. Vercel Deployment & Live Endpoints
 
-1. Push your code to your GitHub/GitLab repository:
+- **Production Live URL:** [https://fleetpulse-azure.vercel.app](https://fleetpulse-azure.vercel.app)
+- **Deployment Inspect Dashboard:** [https://vercel.com/jeevix-technologies/fleetpulse](https://vercel.com/jeevix-technologies/fleetpulse)
+- **GitHub Repository:** [https://github.com/Jeevi-06-ui/fleetpulse](https://github.com/Jeevi-06-ui/fleetpulse)
    ```bash
    git add .
    git commit -m "feat: complete FleetPulse production release"

@@ -6,6 +6,8 @@
 > **Project Reference:** JT/INT/2026/FE/027  
 > **Internship Period:** 1 September – 1 October 2026  
 
+[![Live Demo](https://img.shields.io/badge/Demo-fleetpulse--azure.vercel.app-13C8C1?style=flat&logo=vercel)](https://fleetpulse-azure.vercel.app)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Jeevi--06--ui%2Ffleetpulse-blue?style=flat&logo=github)](https://github.com/Jeevi-06-ui/fleetpulse)
 [![Next.js 14](https://img.shields.io/badge/Next.js-14.2.24-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
