@@ -1,0 +1,106 @@
+{
+  "info": {
+    "_postman_id": "c1f7a829-4592-4912-8874-9842aef28312",
+    "name": "FleetPulse Mock Telematics & Operations API",
+    "description": "Mock API collection for FleetPulse - Jeevix Technologies. Represents simulated in-browser service layer endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Vehicles",
+      "item": [
+        {
+          "name": "List All Vehicles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://mock.fleetpulse.local/api/v1/vehicles?status=available",
+              "protocol": "https",
+              "host": ["mock", "fleetpulse", "local"],
+              "path": ["api", "v1", "vehicles"],
+              "query": [{ "key": "status", "value": "available" }]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": \"veh-01\",\n      \"registration\": \"KA-01-EA-4821\",\n      \"name\": \"Tata Signa 4825.TK\",\n      \"category\": \"Heavy Duty Truck\",\n      \"status\": \"available\",\n      \"odometerKm\": 84210\n    }\n  ],\n  \"meta\": {\n    \"total\": 1,\n    \"timestamp\": \"2026-11-24T10:00:00.000Z\",\n    \"version\": \"1.0.0-mock\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register New Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registration\": \"KA-05-MM-9999\",\n  \"name\": \"Tata Prima 5530\",\n  \"category\": \"Heavy Duty Truck\",\n  \"odometerKm\": 12000,\n  \"capacityKg\": 30000,\n  \"fuelType\": \"Diesel\",\n  \"serviceDueDate\": \"2027-01-15T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "https://mock.fleetpulse.local/api/v1/vehicles",
+              "protocol": "https",
+              "host": ["mock", "fleetpulse", "local"],
+              "path": ["api", "v1", "vehicles"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dispatch & Trips",
+      "item": [
+        {
+          "name": "Schedule New Trip",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"veh-01\",\n  \"driverId\": \"drv-01\",\n  \"origin\": \"Bengaluru Central Hub\",\n  \"destination\": \"Chennai Port CFS\",\n  \"scheduledStart\": \"2026-11-25T07:00:00.000Z\",\n  \"scheduledEnd\": \"2026-11-25T15:00:00.000Z\",\n  \"distanceKm\": 345,\n  \"cargoDescription\": \"Precision Electronics\"\n}"
+            },
+            "url": {
+              "raw": "https://mock.fleetpulse.local/api/v1/trips",
+              "protocol": "https",
+              "host": ["mock", "fleetpulse", "local"],
+              "path": ["api", "v1", "trips"]
+            }
+          },
+          "response": [
+            {
+              "name": "Conflict Error (409)",
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"error\": {\n    \"code\": \"CONFLICT\",\n    \"message\": \"Vehicle is already assigned to Trip FP-2026-1001 during this period.\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Telematics",
+      "item": [
+        {
+          "name": "Get Live Telemetry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://mock.fleetpulse.local/api/v1/telemetry",
+              "protocol": "https",
+              "host": ["mock", "fleetpulse", "local"],
+              "path": ["api", "v1", "telemetry"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
