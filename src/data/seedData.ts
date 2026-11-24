@@ -7,6 +7,9 @@ import {
   InspectionDefect,
   Notification,
   AuditActivity,
+  GeofenceZone,
+  GeofenceEvent,
+  FuelLog,
 } from '@/types';
 
 // Reference anchor date: 2026-11-24T10:00:00.000Z
@@ -1406,5 +1409,159 @@ export const SEED_AUDIT_LOGS: AuditActivity[] = [
     demoActor: 'Sunita Rao (Dispatcher)',
     timestamp: '2026-11-22T06:30:00.000Z',
     description: 'Trip cancelled and vehicle reservation released due to unresolved defect.',
+  },
+];
+
+export const SEED_GEOFENCE_ZONES: GeofenceZone[] = [
+  {
+    id: 'zone-01',
+    name: 'Bengaluru Central Logistics Hub',
+    type: 'Depot',
+    coordinates: [35, 75],
+    radius: 7,
+    speedLimitKmh: 25,
+    description: 'Main southern hub depot, cross-docking bays, and maintenance workshop.',
+  },
+  {
+    id: 'zone-02',
+    name: 'Chennai Port Container Freight Station',
+    type: 'Port Terminal',
+    coordinates: [85, 78],
+    radius: 8,
+    speedLimitKmh: 20,
+    description: 'Marine container terminal quarantine and customs inspection bay.',
+  },
+  {
+    id: 'zone-03',
+    name: 'Pune Chakan Auto Cluster',
+    type: 'Industrial Park',
+    coordinates: [25, 45],
+    radius: 6,
+    speedLimitKmh: 30,
+    description: 'Automotive manufacturing corridor and parts replenishment staging area.',
+  },
+  {
+    id: 'zone-04',
+    name: 'Hyderabad Shamshabad Cargo Village',
+    type: 'Depot',
+    coordinates: [55, 52],
+    radius: 7,
+    speedLimitKmh: 25,
+    description: 'Airport air-cargo integration facility and cold-chain terminal.',
+  },
+  {
+    id: 'zone-05',
+    name: 'Hosur SIPCOT Manufacturing Perimeter',
+    type: 'Industrial Park',
+    coordinates: [42, 80],
+    radius: 5,
+    speedLimitKmh: 30,
+    description: 'High-density precision components and electronics corridor.',
+  },
+];
+
+export const SEED_FUEL_LOGS: FuelLog[] = [
+  {
+    id: 'fuel-01',
+    vehicleId: 'veh-01',
+    date: '2026-11-23T18:00:00.000Z',
+    quantityLiters: 180,
+    costInr: 16200,
+    stationName: 'Indian Oil Highway Plaza, Hosur',
+    odometerKm: 83800,
+    fuelType: 'Diesel',
+  },
+  {
+    id: 'fuel-02',
+    vehicleId: 'veh-02',
+    date: '2026-11-23T19:30:00.000Z',
+    quantityLiters: 140,
+    costInr: 12600,
+    stationName: 'Bharat Petroleum Oasis, Vellore',
+    odometerKm: 52000,
+    fuelType: 'Diesel',
+  },
+  {
+    id: 'fuel-03',
+    vehicleId: 'veh-03',
+    date: '2026-11-22T14:00:00.000Z',
+    quantityLiters: 210,
+    costInr: 18900,
+    stationName: 'HPCL Auto Port, Solapur',
+    odometerKm: 111800,
+    fuelType: 'Diesel',
+  },
+  {
+    id: 'fuel-04',
+    vehicleId: 'veh-04',
+    date: '2026-11-24T06:00:00.000Z',
+    quantityLiters: 35, // kWh
+    costInr: 420,
+    stationName: 'Jeevix EV Fast-Charge Depot Bay 1',
+    odometerKm: 18950,
+    fuelType: 'Electric',
+  },
+  {
+    id: 'fuel-05',
+    vehicleId: 'veh-06',
+    date: '2026-11-24T05:30:00.000Z',
+    quantityLiters: 30, // kWh
+    costInr: 360,
+    stationName: 'Jeevix EV Fast-Charge Depot Bay 2',
+    odometerKm: 24100,
+    fuelType: 'Electric',
+  },
+  {
+    id: 'fuel-06',
+    vehicleId: 'veh-08',
+    date: '2026-11-23T12:00:00.000Z',
+    quantityLiters: 45, // kg CNG
+    costInr: 3825,
+    stationName: 'GAIL Gas Station, Peenya',
+    odometerKm: 43200,
+    fuelType: 'CNG',
+  },
+  {
+    id: 'fuel-07',
+    vehicleId: 'veh-13',
+    date: '2026-11-23T20:00:00.000Z',
+    quantityLiters: 40, // kWh
+    costInr: 480,
+    stationName: 'Clean-Air Terminal EV Station, Pune',
+    odometerKm: 15300,
+    fuelType: 'Electric',
+  },
+];
+
+export const SEED_GEOFENCE_EVENTS: GeofenceEvent[] = [
+  {
+    id: 'geo-01',
+    vehicleId: 'veh-01',
+    registration: 'KA-01-EA-4821',
+    zoneId: 'zone-01',
+    zoneName: 'Bengaluru Central Logistics Hub',
+    eventType: 'EXIT',
+    timestamp: '2026-11-24T06:20:00.000Z',
+    speedKmh: 24,
+  },
+  {
+    id: 'geo-02',
+    vehicleId: 'veh-02',
+    registration: 'KA-04-MB-1904',
+    zoneId: 'zone-05',
+    zoneName: 'Hosur SIPCOT Manufacturing Perimeter',
+    eventType: 'ENTER',
+    timestamp: '2026-11-24T08:15:00.000Z',
+    speedKmh: 28,
+  },
+  {
+    id: 'geo-03',
+    vehicleId: 'veh-03',
+    registration: 'MH-12-TR-9182',
+    zoneId: 'zone-03',
+    zoneName: 'Pune Chakan Auto Cluster',
+    eventType: 'EXIT',
+    timestamp: '2026-11-24T05:25:00.000Z',
+    speedKmh: 22,
   },
 ];

@@ -21,6 +21,8 @@ import {
   X,
   LogOut,
   Sparkles,
+  Fuel,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -39,9 +41,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenRoleSwi
     { label: 'Fleet Overview', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Vehicle Registry', href: '/vehicles', icon: Truck },
     { label: 'Live Telemetry Map', href: '/tracking', icon: MapPin },
+    { label: 'Geofence Zones', href: '/geofencing', icon: ShieldAlert },
     { label: 'Trips & Dispatch', href: '/trips', icon: Send },
     { label: 'Schedule New Trip', href: '/trips/new', icon: CalendarPlus },
     { label: 'Maintenance Schedule', href: '/maintenance', icon: Wrench },
+    { label: 'Fuel & ESG Analytics', href: '/analytics/fuel', icon: Fuel },
     { label: 'Fleet Analytics', href: '/analytics', icon: BarChart3 },
     { label: 'Export Reports', href: '/reports', icon: FileSpreadsheet },
   ];
@@ -57,9 +61,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenRoleSwi
     { label: 'Vehicle Management', href: '/vehicles', icon: Truck },
     { label: 'Driver Directory', href: '/admin/drivers', icon: Users },
     { label: 'Live Telemetry Map', href: '/tracking', icon: MapPin },
+    { label: 'Geofence Zones', href: '/geofencing', icon: ShieldAlert },
     { label: 'Trips & Scheduling', href: '/trips', icon: Send },
     { label: 'Service & Maintenance', href: '/maintenance', icon: Wrench },
     { label: 'Inspections & Defects', href: '/inspections', icon: AlertTriangle },
+    { label: 'Fuel & ESG Analytics', href: '/analytics/fuel', icon: Fuel },
     { label: 'Analytics & KPIs', href: '/analytics', icon: BarChart3 },
     { label: 'Reports & CSV Export', href: '/reports', icon: FileSpreadsheet },
     { label: 'Settings & Audit Logs', href: '/settings', icon: Settings },

@@ -23,6 +23,7 @@ import {
   Play,
   Check,
   FileText,
+  Printer,
 } from 'lucide-react';
 
 export default function TripDetailPage() {
@@ -145,6 +146,16 @@ export default function TripDetailPage() {
 
         {/* Action Controls based on status */}
         <div className="flex items-center gap-2">
+          <Link href={`/trips/${trip.id}/waybill`}>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Printer className="w-3.5 h-3.5" />}
+            >
+              Waybill / POD
+            </Button>
+          </Link>
+
           {trip.status === 'scheduled' && (
             <>
               <Button

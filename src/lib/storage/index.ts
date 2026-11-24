@@ -7,6 +7,9 @@ import {
   InspectionDefect,
   Notification,
   AuditActivity,
+  GeofenceZone,
+  GeofenceEvent,
+  FuelLog,
 } from '@/types';
 import {
   SEED_VEHICLES,
@@ -17,9 +20,12 @@ import {
   SEED_INSPECTION_DEFECTS,
   SEED_NOTIFICATIONS,
   SEED_AUDIT_LOGS,
+  SEED_GEOFENCE_ZONES,
+  SEED_GEOFENCE_EVENTS,
+  SEED_FUEL_LOGS,
 } from '@/data/seedData';
 
-export const STORAGE_KEY = 'FLEETPULSE_STATE_V1.0';
+export const STORAGE_KEY = 'FLEETPULSE_STATE_V1.1';
 
 export interface PersistentFleetState {
   version: string;
@@ -31,12 +37,15 @@ export interface PersistentFleetState {
   defects: InspectionDefect[];
   notifications: Notification[];
   auditLogs: AuditActivity[];
+  geofenceZones: GeofenceZone[];
+  geofenceEvents: GeofenceEvent[];
+  fuelLogs: FuelLog[];
   lastSaved: string;
 }
 
 export function getInitialSeedState(): PersistentFleetState {
   return {
-    version: '1.0',
+    version: '1.1',
     vehicles: JSON.parse(JSON.stringify(SEED_VEHICLES)),
     drivers: JSON.parse(JSON.stringify(SEED_DRIVERS)),
     trips: JSON.parse(JSON.stringify(SEED_TRIPS)),
@@ -45,6 +54,9 @@ export function getInitialSeedState(): PersistentFleetState {
     defects: JSON.parse(JSON.stringify(SEED_INSPECTION_DEFECTS)),
     notifications: JSON.parse(JSON.stringify(SEED_NOTIFICATIONS)),
     auditLogs: JSON.parse(JSON.stringify(SEED_AUDIT_LOGS)),
+    geofenceZones: JSON.parse(JSON.stringify(SEED_GEOFENCE_ZONES)),
+    geofenceEvents: JSON.parse(JSON.stringify(SEED_GEOFENCE_EVENTS)),
+    fuelLogs: JSON.parse(JSON.stringify(SEED_FUEL_LOGS)),
     lastSaved: new Date().toISOString(),
   };
 }
@@ -63,15 +75,21 @@ export function loadPersistentState(): PersistentFleetState {
     }
 
     const parsed = JSON.parse(raw);
-    // Version check and integrity validation
-    if (!parsed || parsed.version !== '1.0' || !Array.isArray(parsed.vehicles)) {
-      console.warn('FleetPulse: Corrupted or outdated local storage version. Restoring seed data.');
+    if (!parsed || !Array.isArray(parsed.vehicles)) {
+      console.warn('FleetPulse: Corrupted local storage. Restoring seed data.');
       const initial = getInitialSeedState();
       savePersistentState(initial);
       return initial;
     }
 
-    return parsed as PersistentFleetState;
+    // Graceful migration: ensure newly added entity arrays exist
+    return {
+      ...parsed,
+      version: '1.1',
+      geofenceZones: parsed.geofenceZones || JSON.parse(JSON.stringify(SEED_GEOFENCE_ZONES)),
+      geofenceEvents: parsed.geofenceEvents || JSON.parse(JSON.stringify(SEED_GEOFENCE_EVENTS)),
+      fuelLogs: parsed.fuelLogs || JSON.parse(JSON.stringify(SEED_FUEL_LOGS)),
+    } as PersistentFleetState;
   } catch (err) {
     console.error('FleetPulse: Failed to read local storage. Falling back to default seed fixtures.', err);
     return getInitialSeedState();
@@ -79,7 +97,7 @@ export function loadPersistentState(): PersistentFleetState {
 }
 
 export function savePersistentState(state: PersistentFleetState): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !window.localStorage) return;
 
   try {
     const stateToSave: PersistentFleetState = {
@@ -93,7 +111,7 @@ export function savePersistentState(state: PersistentFleetState): void {
 }
 
 export function resetPersistentState(): PersistentFleetState {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && window.localStorage) {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (e) {

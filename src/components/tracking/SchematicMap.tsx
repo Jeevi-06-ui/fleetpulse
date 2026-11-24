@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Vehicle, Telemetry } from '@/types';
-import { ZoomIn, ZoomOut, RotateCcw, Navigation2, Radio } from 'lucide-react';
+import { Vehicle, Telemetry, GeofenceZone } from '@/types';
+import { ZoomIn, ZoomOut, RotateCcw, ShieldAlert, Layers } from 'lucide-react';
 
 interface SchematicMapProps {
   vehicles: Vehicle[];
@@ -10,6 +10,7 @@ interface SchematicMapProps {
   selectedVehicleId: string | null;
   onSelectVehicle: (id: string) => void;
   statusFilter: string;
+  geofenceZones?: GeofenceZone[];
 }
 
 // Key logistic hubs with schematic coordinates [x, y] on a 100x100 grid
@@ -43,11 +44,14 @@ export const SchematicMap: React.FC<SchematicMapProps> = ({
   selectedVehicleId,
   onSelectVehicle,
   statusFilter,
+  geofenceZones = [],
 }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [showGeofences, setShowGeofences] = useState(true);
+  const [showTrails, setShowTrails] = useState(true);
 
   const mapRef = useRef<SVGSVGElement>(null);
 
@@ -108,29 +112,54 @@ export const SchematicMap: React.FC<SchematicMapProps> = ({
         </div>
       </div>
 
-      {/* Floating Map Zoom / Pan Controls */}
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-fleet border border-slate-800 shadow-xl">
-        <button
-          onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
-          title="Zoom In"
-        >
-          <ZoomIn className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => setZoomLevel((z) => Math.max(0.75, z - 0.25))}
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
-          title="Zoom Out"
-        >
-          <ZoomOut className="w-4 h-4" />
-        </button>
-        <button
-          onClick={resetView}
-          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
-          title="Reset View"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
+      {/* Layer Toggles & Zoom Controls */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+        <div className="flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded-fleet border border-slate-800 text-[11px] text-slate-300 shadow-xl">
+          <button
+            onClick={() => setShowGeofences((v) => !v)}
+            className={`px-2 py-1 rounded text-xs transition-colors flex items-center gap-1.5 ${
+              showGeofences ? 'bg-fleet-primary/20 text-fleet-primary font-semibold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Toggle Geofence Boundaries"
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Geofences</span>
+          </button>
+          <button
+            onClick={() => setShowTrails((v) => !v)}
+            className={`px-2 py-1 rounded text-xs transition-colors flex items-center gap-1.5 ${
+              showTrails ? 'bg-fleet-primary/20 text-fleet-primary font-semibold' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Toggle Telemetry Breadcrumb Trails"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Trails</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-1.5 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-fleet border border-slate-800 shadow-xl">
+          <button
+            onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
+            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+            title="Zoom In"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setZoomLevel((z) => Math.max(0.75, z - 0.25))}
+            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+            title="Zoom Out"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button
+            onClick={resetView}
+            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+            title="Reset View"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Interactive SVG Canvas */}
@@ -159,6 +188,45 @@ export const SchematicMap: React.FC<SchematicMapProps> = ({
             </pattern>
           </defs>
           <rect width="100" height="100" fill="url(#grid)" />
+
+          {/* Geofence Zone Polygons & Circles */}
+          {showGeofences &&
+            geofenceZones.map((zone) => {
+              const zoneColor =
+                zone.type === 'Port Terminal'
+                  ? '#F59E0B'
+                  : zone.type === 'Depot'
+                  ? '#3B82F6'
+                  : zone.type === 'Industrial Park'
+                  ? '#8B5CF6'
+                  : '#EC4899';
+
+              return (
+                <g key={zone.id}>
+                  <circle
+                    cx={zone.coordinates[0]}
+                    cy={zone.coordinates[1]}
+                    r={zone.radius}
+                    fill={zoneColor}
+                    fillOpacity="0.08"
+                    stroke={zoneColor}
+                    strokeWidth="0.5"
+                    strokeDasharray="2,1"
+                  />
+                  <text
+                    x={zone.coordinates[0]}
+                    y={zone.coordinates[1] - zone.radius - 0.8}
+                    fill={zoneColor}
+                    fontSize="1.6"
+                    fontFamily="monospace"
+                    textAnchor="middle"
+                    fontWeight="bold"
+                  >
+                    {zone.name.toUpperCase()} (≤{zone.speedLimitKmh} km/h)
+                  </text>
+                </g>
+              );
+            })}
 
           {/* National Freight Highway Corridors */}
           {HIGHWAY_CORRIDORS.map((corr, idx) => (
@@ -201,6 +269,32 @@ export const SchematicMap: React.FC<SchematicMapProps> = ({
               </text>
             </g>
           ))}
+
+          {/* Breadcrumb Telemetry Trails */}
+          {showTrails &&
+            filteredVehicles.map((v) => {
+              const tel = telemetry[v.telemetryId];
+              if (!tel || !tel.recentTrail || tel.recentTrail.length < 2) return null;
+
+              const trailPoints = [
+                ...tel.recentTrail.map((p) => `${p[0]},${p[1]}`),
+                `${tel.coordinates[0]},${tel.coordinates[1]}`,
+              ].join(' ');
+
+              const markerColor = getMarkerColor(v.status);
+
+              return (
+                <polyline
+                  key={`trail-${v.id}`}
+                  points={trailPoints}
+                  fill="none"
+                  stroke={markerColor}
+                  strokeWidth="0.6"
+                  strokeDasharray="1,1"
+                  strokeOpacity="0.4"
+                />
+              );
+            })}
 
           {/* Vehicles Telemetry Markers */}
           {filteredVehicles.map((v) => {

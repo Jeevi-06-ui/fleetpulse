@@ -47,6 +47,18 @@ export interface Driver {
   joinedDate: string;
 }
 
+export interface DriverScorecard {
+  driverId: string;
+  safetyScore: number; // 0 - 100
+  punctualityScore: number; // 0 - 100
+  checklistComplianceRate: number; // %
+  harshBrakingIncidents: number;
+  speedingIncidents: number;
+  idleHoursThisMonth: number;
+  fuelEfficiencyRank: 'Top 10%' | 'Average' | 'Needs Improvement';
+  badges: string[];
+}
+
 export type TripStatus = 'scheduled' | 'inProgress' | 'completed' | 'cancelled';
 
 export interface ChecklistItem {
@@ -104,6 +116,7 @@ export interface Telemetry {
   fuelLevelPct: number;
   engineTempC: number;
   batteryPct?: number;
+  recentTrail?: [number, number][]; // Breadcrumb coordinate history
 }
 
 export type MaintenanceType = 
@@ -156,6 +169,48 @@ export interface InspectionDefect {
   attachmentDataUrl?: string; // Local preview only
 }
 
+export interface GeofenceZone {
+  id: string;
+  name: string;
+  type: 'Depot' | 'Port Terminal' | 'Industrial Park' | 'Restricted Zone';
+  coordinates: [number, number]; // center [x, y]
+  radius: number; // in schematic units
+  speedLimitKmh: number;
+  description: string;
+}
+
+export interface GeofenceEvent {
+  id: string;
+  vehicleId: string;
+  registration: string;
+  zoneId: string;
+  zoneName: string;
+  eventType: 'ENTER' | 'EXIT' | 'SPEED_BREACH';
+  timestamp: string;
+  speedKmh: number;
+}
+
+export interface FuelLog {
+  id: string;
+  vehicleId: string;
+  date: string;
+  quantityLiters: number;
+  costInr: number;
+  stationName: string;
+  odometerKm: number;
+  fuelType: 'Diesel' | 'Electric' | 'CNG';
+}
+
+export interface FleetEsgMetrics {
+  totalFuelSpentInr: number;
+  totalDieselLitersConsumed: number;
+  totalElectricityKwhConsumed: number;
+  averageFleetKmpl: number;
+  totalCo2EmissionsKg: number;
+  co2SavedByEvFleetKg: number;
+  activeEvVehiclesCount: number;
+}
+
 export type NotificationType = 
   | 'trip_assigned'
   | 'trip_started'
@@ -164,6 +219,8 @@ export type NotificationType =
   | 'maintenance_due'
   | 'defect_reported'
   | 'speeding_alert'
+  | 'geofence_breach'
+  | 'fuel_anomaly'
   | 'system';
 
 export type NotificationSeverity = 'info' | 'warning' | 'critical' | 'success';
@@ -175,7 +232,7 @@ export interface Notification {
   title: string;
   message: string;
   linkedRecord?: {
-    type: 'vehicle' | 'trip' | 'maintenance' | 'defect';
+    type: 'vehicle' | 'trip' | 'maintenance' | 'defect' | 'geofence';
     id: string;
   };
   createdAt: string;
@@ -185,7 +242,7 @@ export interface Notification {
 export interface AuditActivity {
   id: string;
   action: string;
-  recordType: 'vehicle' | 'trip' | 'maintenance' | 'driver' | 'defect' | 'system';
+  recordType: 'vehicle' | 'trip' | 'maintenance' | 'driver' | 'defect' | 'geofence' | 'system';
   recordId: string;
   demoActor: string;
   timestamp: string;

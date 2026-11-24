@@ -5,10 +5,10 @@ import { useFleet } from '@/context/FleetContext';
 import { SchematicMap } from '@/components/tracking/SchematicMap';
 import { TrackingVehicleSidebar } from '@/components/tracking/TrackingVehicleSidebar';
 import { Button } from '@/components/ui/Button';
-import { MapPin, Radio, Filter, RotateCcw } from 'lucide-react';
+import { MapPin, Radio, FastForward, Gauge } from 'lucide-react';
 
 export default function TrackingPage() {
-  const { state, toggleSimulation } = useFleet();
+  const { state, toggleSimulation, setSimulationSpeed } = useFleet();
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(
     state.vehicles.find((v) => v.status === 'inTransit')?.id || state.vehicles[0]?.id || null
   );
@@ -39,7 +39,7 @@ export default function TrackingPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Status Filter */}
           <select
             value={statusFilter}
@@ -60,6 +60,27 @@ export default function TrackingPage() {
               Maintenance ({state.vehicles.filter((v) => v.status === 'maintenance').length})
             </option>
           </select>
+
+          {/* Simulation Speed Selector */}
+          <div className="flex items-center bg-white dark:bg-fleet-navy-800 border border-slate-200 dark:border-fleet-border-dark rounded-fleet p-0.5 text-xs">
+            <span className="px-2 py-1 text-slate-400 flex items-center gap-1 font-mono text-[11px]">
+              <FastForward className="w-3 h-3" />
+              Speed:
+            </span>
+            {([1, 2, 5] as const).map((spd) => (
+              <button
+                key={spd}
+                onClick={() => setSimulationSpeed(spd)}
+                className={`px-2 py-0.5 text-xs font-semibold rounded ${
+                  state.simulationSpeed === spd
+                    ? 'bg-fleet-primary text-fleet-navy-900 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {spd}x
+              </button>
+            ))}
+          </div>
 
           {/* Simulation Toggle */}
           <Button
@@ -82,6 +103,7 @@ export default function TrackingPage() {
             selectedVehicleId={selectedVehicleId}
             onSelectVehicle={(id) => setSelectedVehicleId(id)}
             statusFilter={statusFilter}
+            geofenceZones={state.geofenceZones}
           />
         </div>
 

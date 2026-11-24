@@ -14,6 +14,9 @@ import {
   UserRole,
   FleetMetrics,
   TripStatus,
+  GeofenceZone,
+  GeofenceEvent,
+  FuelLog,
 } from '@/types';
 import {
   loadPersistentState,
@@ -24,11 +27,14 @@ import {
 import { calculateFleetMetrics } from '@/lib/domain/metrics';
 import { checkTripConflicts } from '@/lib/domain/conflicts';
 import { transitionTripStatus } from '@/lib/domain/lifecycle';
+import { evaluateGeofenceStatus } from '@/lib/domain/geofence';
+import { checkFuelAnomaly } from '@/lib/domain/fuel';
 
 interface FleetState extends PersistentFleetState {
   session: DemoSession;
   theme: 'dark' | 'light';
   simulationActive: boolean;
+  simulationSpeed: 1 | 2 | 5;
   simulatedErrorMode: boolean;
   metrics: FleetMetrics;
   isHydrated: boolean;
@@ -39,6 +45,7 @@ type FleetAction =
   | { type: 'SET_ROLE'; payload: { role: UserRole; driverId?: string } }
   | { type: 'SET_THEME'; payload: 'dark' | 'light' }
   | { type: 'TOGGLE_SIMULATION'; payload?: boolean }
+  | { type: 'SET_SIMULATION_SPEED'; payload: 1 | 2 | 5 }
   | { type: 'TOGGLE_ERROR_MODE'; payload?: boolean }
   | { type: 'ADD_VEHICLE'; payload: Vehicle }
   | { type: 'UPDATE_VEHICLE'; payload: Vehicle }
@@ -62,6 +69,9 @@ type FleetAction =
   | { type: 'UPDATE_MAINTENANCE'; payload: MaintenanceJob }
   | { type: 'RESOLVE_MAINTENANCE'; payload: { jobId: string; actualCost: number } }
   | { type: 'UPDATE_TELEMETRY'; payload: Record<string, Telemetry> }
+  | { type: 'ADD_FUEL_LOG'; payload: FuelLog }
+  | { type: 'ADD_GEOFENCE_ZONE'; payload: GeofenceZone }
+  | { type: 'RECORD_GEOFENCE_EVENTS'; payload: GeofenceEvent[] }
   | { type: 'MARK_NOTIFICATION_READ'; payload: string }
   | { type: 'MARK_ALL_NOTIFICATIONS_READ' }
   | { type: 'RESET_DATA' };
@@ -117,6 +127,10 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
     case 'TOGGLE_SIMULATION': {
       const next = action.payload !== undefined ? action.payload : !state.simulationActive;
       return { ...state, simulationActive: next };
+    }
+
+    case 'SET_SIMULATION_SPEED': {
+      return { ...state, simulationSpeed: action.payload };
     }
 
     case 'TOGGLE_ERROR_MODE': {
@@ -183,14 +197,12 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
       const newTrip = action.payload;
       const newTrips = [newTrip, ...state.trips];
 
-      // Update vehicle status to assigned
       const newVehicles = state.vehicles.map((v) =>
         v.id === newTrip.vehicleId && v.status === 'available'
           ? { ...v, status: 'assigned' as const, assignedDriverId: newTrip.driverId }
           : v
       );
 
-      // Update driver currentVehicleId
       const newDrivers = state.drivers.map((d) =>
         d.id === newTrip.driverId ? { ...d, currentVehicleId: newTrip.vehicleId } : d
       );
@@ -251,7 +263,6 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
       let newVehicles = [...state.vehicles];
       let newDrivers = [...state.drivers];
 
-      // Handle Vehicle & Driver state updates based on trip transition
       if (newStatus === 'inProgress') {
         newVehicles = newVehicles.map((v) =>
           v.id === trip.vehicleId ? { ...v, status: 'inTransit' as const } : v
@@ -266,7 +277,7 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
                 ...v,
                 status: 'available' as const,
                 assignedDriverId: undefined,
-                odometerKm: v.odometerKm + (result.odometerDeltaKm || 0), // Incremented ONCE idempotently
+                odometerKm: v.odometerKm + (result.odometerDeltaKm || 0),
               }
             : v
         );
@@ -350,7 +361,6 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
       const defect = action.payload;
       const newDefects = [defect, ...state.defects];
 
-      // If critical severity, mark vehicle unavailable (maintenance) immediately
       let newVehicles = [...state.vehicles];
       if (defect.severity === 'critical') {
         newVehicles = newVehicles.map((v) =>
@@ -405,7 +415,6 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
           : d
       );
 
-      // Check if vehicle can be returned to available
       let newVehicles = [...state.vehicles];
       if (targetDefect) {
         const remainingCritical = newDefects.filter(
@@ -436,7 +445,6 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
       const job = action.payload;
       const newJobs = [job, ...state.maintenanceJobs];
 
-      // Mark vehicle maintenance
       const newVehicles = state.vehicles.map((v) =>
         v.id === job.vehicleId && (job.status === 'inProgress' || job.status === 'scheduled')
           ? { ...v, status: 'maintenance' as const }
@@ -489,7 +497,6 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
           : j
       );
 
-      // Return vehicle to available if no other active maintenance or critical defect
       const remainingJobs = newJobs.filter(
         (j) => j.vehicleId === job.vehicleId && (j.status === 'scheduled' || j.status === 'inProgress')
       );
@@ -522,6 +529,40 @@ function fleetReducer(state: FleetState, action: FleetAction): FleetState {
           ...state.telemetry,
           ...action.payload,
         },
+      };
+    }
+
+    case 'ADD_FUEL_LOG': {
+      return {
+        ...state,
+        fuelLogs: [action.payload, ...state.fuelLogs],
+      };
+    }
+
+    case 'ADD_GEOFENCE_ZONE': {
+      return {
+        ...state,
+        geofenceZones: [...state.geofenceZones, action.payload],
+      };
+    }
+
+    case 'RECORD_GEOFENCE_EVENTS': {
+      const newEvents = [...action.payload, ...state.geofenceEvents];
+      // Convert new events to notifications if speed breach or security enter
+      const newNotifs: Notification[] = action.payload.map((evt) => ({
+        id: `notif-${Date.now()}-${evt.id}`,
+        type: 'geofence_breach' as const,
+        severity: evt.eventType === 'SPEED_BREACH' ? 'critical' : 'info',
+        title: `Geofence ${evt.eventType}: ${evt.zoneName}`,
+        message: `Vehicle ${evt.registration} ${evt.eventType === 'ENTER' ? 'entered' : evt.eventType === 'EXIT' ? 'departed' : 'exceeded speed limit inside'} ${evt.zoneName} (${evt.speedKmh} km/h).`,
+        createdAt: evt.timestamp,
+        read: false,
+      }));
+
+      return {
+        ...state,
+        geofenceEvents: newEvents,
+        notifications: [...newNotifs, ...state.notifications],
       };
     }
 
@@ -571,6 +612,7 @@ interface FleetContextValue {
   switchRole: (role: UserRole, driverId?: string) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   toggleSimulation: () => void;
+  setSimulationSpeed: (speed: 1 | 2 | 5) => void;
   toggleErrorMode: () => void;
 }
 
@@ -590,6 +632,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       session: initialSession,
       theme: 'dark' as const,
       simulationActive: true,
+      simulationSpeed: 1 as 1 | 2 | 5,
       simulatedErrorMode: false,
       metrics,
       isHydrated: false,
@@ -603,7 +646,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     const loaded = loadPersistentState();
     dispatch({ type: 'HYDRATE_STATE', payload: loaded });
 
-    // Check stored theme preference
     if (typeof window !== 'undefined' && window.localStorage) {
       const storedTheme = localStorage.getItem('fleetpulse_theme') as 'dark' | 'light' | null;
       if (storedTheme) {
@@ -612,7 +654,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Sync state to versioned local storage whenever core records change
+  // Sync state to versioned local storage
   useEffect(() => {
     if (state.isHydrated) {
       savePersistentState({
@@ -625,6 +667,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         defects: state.defects,
         notifications: state.notifications,
         auditLogs: state.auditLogs,
+        geofenceZones: state.geofenceZones,
+        geofenceEvents: state.geofenceEvents,
+        fuelLogs: state.fuelLogs,
         lastSaved: state.lastSaved,
       });
     }
@@ -638,6 +683,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     state.defects,
     state.notifications,
     state.auditLogs,
+    state.geofenceZones,
+    state.geofenceEvents,
+    state.fuelLogs,
     state.lastSaved,
     state.version,
   ]);
@@ -655,43 +703,75 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.theme]);
 
-  // Simulated GPS Telemetry Ticker (stops when simulationActive is false)
+  // Real-time GPS Telemetry Simulation & Geofence Boundary Ticker
   useEffect(() => {
     if (!state.simulationActive) return;
 
+    // Interval adapts to simulation speed: 1x -> 3500ms, 2x -> 1750ms, 5x -> 700ms
+    const intervalMs = Math.round(3500 / state.simulationSpeed);
+
     const interval = setInterval(() => {
-      // Find vehicles in transit and nudge synthetic coordinates along their route
       const inTransitVehicles = state.vehicles.filter((v) => v.status === 'inTransit');
       if (inTransitVehicles.length === 0) return;
 
       const updatedTelemetry: Record<string, Telemetry> = {};
       const now = new Date().toISOString();
+      const detectedEvents: GeofenceEvent[] = [];
 
       inTransitVehicles.forEach((v) => {
         const cur = state.telemetry[v.telemetryId];
         if (!cur) return;
 
-        // Small deterministic delta
-        const deltaX = (Math.random() - 0.48) * 0.4;
-        const deltaY = (Math.random() - 0.48) * 0.4;
+        // Smooth trajectory delta scaled by simulation speed
+        const speedFactor = state.simulationSpeed;
+        const deltaX = (Math.random() - 0.47) * 0.5 * speedFactor;
+        const deltaY = (Math.random() - 0.47) * 0.5 * speedFactor;
         const newX = Math.min(95, Math.max(5, cur.coordinates[0] + deltaX));
         const newY = Math.min(95, Math.max(5, cur.coordinates[1] + deltaY));
-        const newSpeed = Math.floor(55 + Math.random() * 18);
+        const newSpeed = Math.floor(58 + Math.random() * 16);
 
-        updatedTelemetry[v.telemetryId] = {
+        // Maintain trailing breadcrumbs (last 6 coordinates)
+        const prevTrail = cur.recentTrail || [];
+        const newTrail: [number, number][] = [
+          ...prevTrail.slice(-5),
+          [Math.round(newX * 10) / 10, Math.round(newY * 10) / 10],
+        ];
+
+        const updatedTel: Telemetry = {
           ...cur,
           coordinates: [Math.round(newX * 10) / 10, Math.round(newY * 10) / 10],
+          recentTrail: newTrail,
           speedKmh: newSpeed,
           heading: (cur.heading + Math.floor((Math.random() - 0.5) * 6) + 360) % 360,
           lastUpdated: now,
         };
+
+        updatedTelemetry[v.telemetryId] = updatedTel;
+
+        // Geofence check
+        const { events } = evaluateGeofenceStatus({
+          vehicleId: v.id,
+          registration: v.registration,
+          coordinates: updatedTel.coordinates,
+          speedKmh: newSpeed,
+          zones: state.geofenceZones,
+          previouslyInsideZoneIds: [],
+        });
+
+        if (events.length > 0) {
+          detectedEvents.push(...events);
+        }
       });
 
       dispatch({ type: 'UPDATE_TELEMETRY', payload: updatedTelemetry });
-    }, 4000);
+
+      if (detectedEvents.length > 0) {
+        dispatch({ type: 'RECORD_GEOFENCE_EVENTS', payload: detectedEvents });
+      }
+    }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [state.simulationActive, state.vehicles, state.telemetry]);
+  }, [state.simulationActive, state.simulationSpeed, state.vehicles, state.telemetry, state.geofenceZones]);
 
   const contextValue: FleetContextValue = {
     state,
@@ -714,6 +794,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     },
     toggleSimulation: () => {
       dispatch({ type: 'TOGGLE_SIMULATION' });
+    },
+    setSimulationSpeed: (speed) => {
+      dispatch({ type: 'SET_SIMULATION_SPEED', payload: speed });
     },
     toggleErrorMode: () => {
       dispatch({ type: 'TOGGLE_ERROR_MODE' });
